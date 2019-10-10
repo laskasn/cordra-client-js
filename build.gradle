@@ -1,0 +1,77 @@
+apply from: 'cnri.gradle'
+
+def packageJson = new groovy.json.JsonSlurper().parseText(new File("package.json").text)
+
+group = 'net.cnri.cordra'
+archivesBaseName = scopedNameRemoveScope(packageJson.name) + '-js'
+version = packageJson.version
+
+clean.doFirst {
+    exec {
+        commandLine 'npm', 'run', 'clean'
+    }
+}
+
+def scopedNameRemoveScope(name) {
+    if (!name.startsWith("@")) return name;
+    return name.substring(name.indexOf('/') + 1);
+}
+
+def scopedNameToPackName(name) {
+    if (!name.startsWith("@")) return name;
+    def slash = name.indexOf('/');
+    return name.substring(1, slash) + '-' + name.substring(slash + 1);
+}
+
+task npmPackIntoTmp(type: Exec) {
+    doFirst {
+        new File(buildDir, 'tmp').mkdirs()
+    }
+    workingDir "${buildDir}/tmp"
+    commandLine 'npm', 'pack', projectDir
+}
+npmPackIntoTmp.mustRunAfter clean
+
+task pack(type: Tar) {
+    dependsOn clean, npmPackIntoTmp
+    compression Compression.GZIP
+    extension 'tgz'
+    from(tarTree("${buildDir}/tmp/${scopedNameToPackName(packageJson.name)}-${packageJson.version}.tgz"))
+    eachFile { fcd ->
+        // replace "package" with long name
+        fcd.relativePath.segments[0] = "${archivesBaseName}-${version}" as String
+    }
+    artifacts {
+        archives pack
+    }
+}
+
+task npmBuildDocs(type: Exec) {
+   commandLine 'npm', 'run', 'build:docs'
+}
+npmBuildDocs.mustRunAfter clean
+
+task typedoc(type: Zip) {
+    dependsOn clean, npmBuildDocs
+    classifier 'typedoc'
+    from 'dist/docs'
+    into "${archivesBaseName}-${version}-${classifier}"
+    artifacts {
+        archives typedoc
+    }
+}
+
+task npmBuildDocsThemed(type: Exec) {
+   commandLine 'npm', 'run', 'build:docs-themed'
+}
+npmBuildDocsThemed.mustRunAfter clean
+
+task typedocThemed(type: Zip) {
+    dependsOn clean, npmBuildDocsThemed
+    classifier 'typedoc-themed'
+    from 'dist/docs-themed'
+    into "${archivesBaseName}-${version}-${classifier}"
+    artifacts {
+        archives typedocThemed
+    }
+}

@@ -1,0 +1,7 @@
+def scopedNameRemoveScope(name) {
+    if (!name.startsWith("@")) return name;
+    return name.substring(name.indexOf('/') + 1);
+}
+
+def packageJson = new groovy.json.JsonSlurper().parseText(new File("package.json").text)
+rootProject.name = scopedNameRemoveScope(packageJson.name) + '-js'

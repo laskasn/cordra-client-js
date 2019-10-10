@@ -1,0 +1,8 @@
+/.idea/
+/node_modules/
+/dist/
+/build/
+/.gradle/
+/.project
+/.settings/
+.DS_Store

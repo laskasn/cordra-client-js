@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "module": "es2015",
+    "target": "es2017",
+    "outDir": "dist/es2017",
+    "declarationDir": "dist/types",
+    "strict": true, // enables noImplicitAny, noImplicitThis, alwaysStrict and strictNullChecks
+    "strictPropertyInitialization": true,
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declaration": true,
+    "removeComments": true
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+  "typedocOptions": {
+    "name": "Cordra Client Documentation",
+    "mode": "file",
+    "out": "dist/docs",
+    "exclude": [
+      "**/encoder/*",
+      "**/index.ts"
+    ],
+    "ignoreCompilerErrors": true,
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "excludeExternals": true,
+    "target": "ES6",
+    "preserveConstEnums": true,
+    "stripInternal": true
+  }
+}

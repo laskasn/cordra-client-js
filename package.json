@@ -1,0 +1,63 @@
+{
+  "name": "@cnri/cordra-client",
+  "version": "2.0.12",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "description": "Cordra Client Library - JavaScript Version",
+  "homepage": "https://www.cordra.org",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/cnri/cordra/cordra-client-js"
+  },
+  "author": "CNRI",
+  "main": "dist/cordra-client.js",
+  "browser": "dist/cordra-client.js",
+  "module": "dist/cordra-client.esm.js",
+  "types": "dist/types/index.d.ts",
+  "dependencies": {
+    "core-js": "^3.2.1",
+    "regenerator-runtime": "^0.13.3",
+    "whatwg-fetch": "^3.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.2",
+    "@babel/core": "^7.6.2",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.6.2",
+    "@babel/preset-env": "^7.6.2",
+    "@babel/preset-typescript": "^7.6.0",
+    "@types/chai": "^4.2.3",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.7.11",
+    "chai": "^4.2.0",
+    "http-server": "^0.11.1",
+    "mocha": "^5.2.0",
+    "rollup": "^0.67.4",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^9.3.4",
+    "rollup-plugin-node-resolve": "^3.4.0",
+    "rollup-plugin-uglify": "^6.0.3",
+    "typedoc": "^0.15.0",
+    "typescript": "^3.6.3"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist/*",
+    "type-check": "tsc --noEmit",
+    "build:es2017": "scripts/build-es2017.sh",
+    "test:es2017": "scripts/test-es2017.sh",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:docs": "typedoc && cp LICENSE.txt dist/docs",
+    "build:docs-themed": "typedoc --theme typedoc-theme --out dist/docs-themed && cp LICENSE.txt dist/docs-themed",
+    "build:js": "node build.js",
+    "build": "npm run build:types && npm run build:js",
+    "test": "scripts/test.sh",
+    "prepare": "npm run clean && npm run build"
+  },
+  "files": [
+    "/LICENSE.TXT",
+    "/README.md",
+    "/dist/types",
+    "/dist/*.js",
+    "/dist/*.map",
+    "/package.json"
+  ]
+}
