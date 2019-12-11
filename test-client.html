@@ -1,0 +1,141 @@
+<html>
+
+<head>
+
+<!--
+    <script src="./keycloak.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+-->
+    <title>Cordra js client testbed</title>
+
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+
+</head>
+
+<body>
+
+
+    <script type="module">
+
+        var httpGet = function(url, token){
+
+          const http = new XMLHttpRequest();
+          http.open("GET", url);
+          http.setRequestHeader("Authorization", "Bearer "+token);
+          http.send();
+          http.onreadystatechange = function () {
+            if(this.readyState==4 && this.status==200){
+              console.log(http.responseText);
+            }
+          }
+
+        }
+
+
+
+        import { CordraClient } from "./dist/cordra-client.esm.js" ;
+
+
+        const keycloakConfig = {
+            url: "https://snf-3193.ok-kno.grnetcloud.net/auth",
+            realm: "GRNet",
+            clientId: "cordra-client"
+        };
+
+        const options = {
+          keycloakConfig: keycloakConfig
+        }
+
+        const cordraClient = new CordraClient("http://localhost:8080/cordra-2.0.0", options);
+
+        cordraClient.authenticate().then(() => {
+          cordraClient.list().then((results) => console.log(results));
+        });
+
+
+        console.log("Trying to auth again!")
+        
+
+
+
+
+
+
+
+
+
+/*
+        let promise = cordraClient.keycloakAuth(keycloakConfig);
+        promise.then((c) => {
+          httpGet("http://localhost:8080/cordra-2.0.0/objects/?query=*%3A*&sortFields=/name", c.token);
+        });
+*/
+
+//        client.list().then((results) => console.log(results));
+
+    </script>
+
+    <script>
+
+
+
+
+/*
+        var keycloak = new Keycloak(
+            {
+                url: "https://snf-3193.ok-kno.grnetcloud.net/auth",
+                realm: "GRNet",
+                clientId: "cordra-client"
+            }
+        );
+
+        keycloak
+            .init({
+              onLoad: 'login-required',
+              checkLoginIframe: false,
+              silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
+              promiseType: 'native'
+            })
+            .then(function(authenticated) {
+                console.log(authenticated ? 'authenticated' : 'not authenticated');
+                console.log("JWT is ", keycloak.token)
+                //call('http://localhost:8080/cordra-2.0.0/objects/?query=*%3A*&sortFields=/name', "GET");
+                //call('http://localhost:8080/cordra-2.0.0/auth/token', 'POST');
+                //call2("http://localhost:8080/cordra-2.0.0/objects/?query=*%3A*&sortFields=/name", keycloak.token, "GET");
+                call2('http://localhost:8080/cordra-2.0.0/auth/introspect', keycloak.token, 'POST');
+            })
+            .catch(function() {
+              console.log('failed to initialize');
+            });
+
+
+        var call2 = function (url, token, type) {
+
+          $.ajax({
+              url: url,
+              type: type,
+              dataType: 'json',
+              beforeSend: function(xhrObj){
+                  //xhrObj.setRequestHeader("Content-Type","application/json");
+                  xhrObj.setRequestHeader("Accept","application/json");
+                  xhrObj.setRequestHeader('Authorization', 'Bearer ' + token);
+              },
+              //contentType: 'application/json; charset=utf-8',
+              success: function (result) {
+                  console.log(result);
+              },
+              error: function (error) {
+
+              }
+          });
+        }
+*/
+
+
+    </script>
+
+</body>
+
+</html>

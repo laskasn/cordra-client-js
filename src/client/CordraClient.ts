@@ -16,6 +16,9 @@ import {
 } from './Interfaces.js';
 import { AuthUtil } from './AuthUtil.js';
 
+import Keycloak from '../../node_modules/keycloak-js/dist/keycloak';
+
+
 type ProgressCallback = (event: Event) => void;
 
 export class CordraClient {
@@ -28,6 +31,9 @@ export class CordraClient {
     public defaultOptions: Options;
 
     private authTokens: AuthTokens;
+
+    public keycloakClient: any;
+
 
     public static async checkForErrors(response: Response | ErrorResponse): Promise<Response> {
         if ((response as Response).ok) return response as Response;
@@ -129,6 +135,10 @@ export class CordraClient {
         this.baseUri = CordraClient.ensureSlash(baseUri);
         this.defaultOptions = options || {};
         this.authTokens = AuthUtil.retrieveAuthTokens(this.baseUri);
+        if(options!=null && options.keycloakConfig!=null ) {
+          sessionStorage.setItem("keycloak-auth-lock", "false");
+          this.keycloakClient = Keycloak(options.keycloakConfig);
+        }
     }
 
     /**
@@ -159,6 +169,9 @@ export class CordraClient {
     }
 
     public async buildAuthHeadersReturnDetails(options: Options = this.defaultOptions, acquireNewToken: boolean = true): Promise<{isStoredToken?: boolean, unauthenticated?: boolean, headers: Headers}> {
+        if(options.keycloakConfig){
+          return { headers: await AuthUtil.buildAuthHeadersFromOptions(undefined, this.keycloakClient.token) };
+        }
         if (!options) return { headers: new Headers() };
         if (options.token) return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
         const userKey = options.userId || options.username;
@@ -194,6 +207,8 @@ export class CordraClient {
         }
     }
 
+
+
     /**
      * Authenticates using the given options.
      *
@@ -212,6 +227,11 @@ export class CordraClient {
      * ```
      */
     public async authenticate(options: Options = this.defaultOptions): Promise<AuthResponse> {
+
+        if(options.keycloakConfig) {
+          return this.keycloakAuth();
+        }
+
         const tokenRequest = await AuthUtil.createTokenRequest(options);
         const uri = this.baseUri + 'auth/token';
         const authResponse = await fetch(uri, {
@@ -234,6 +254,36 @@ export class CordraClient {
         }
         return authResponse;
     }
+
+
+    private async keycloakAuth() : Promise<any> {
+      //check if an other thread is already authenticating. Because of the auth redirections, if left unchecked, could lead to serious issues.
+      if(sessionStorage.getItem("keycloak-auth-lock")=="true"){
+        console.log("An authentication is currently under progress... skipping the new request")
+        return;
+      }
+      sessionStorage.setItem("keycloak-auth-lock", "true");
+      //initiating the normal auth progress
+      let promise = this.keycloakClient
+          .init({
+            onLoad: 'login-required',
+            checkLoginIframe: false,
+            //silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
+            promiseType: 'native'
+          });
+      return new Promise(function(resolve, reject) {
+        promise.then((result:any) => {
+          sessionStorage.setItem("keycloak-auth-lock", "false");
+          resolve(promise);
+        });
+        promise.catch((e: any) => {
+          sessionStorage.setItem("keycloak-auth-lock", "false");
+          reject(e);
+        });
+      });
+
+    }
+
 
     /**
      * Gets the authentication status for the supplied options. By default, returns active flag, userId, and username.
