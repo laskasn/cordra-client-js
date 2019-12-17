@@ -42,6 +42,7 @@
     "typescript": "^3.6.3"
   },
   "scripts": {
+    "debug": "node --inspect server.js",
     "clean": "rm -rf ./dist/*",
     "type-check": "tsc --noEmit",
     "build:es2017": "scripts/build-es2017.sh",

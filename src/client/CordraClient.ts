@@ -256,14 +256,7 @@ export class CordraClient {
     }
 
 
-    private async keycloakAuth() : Promise<any> {
-      //check if an other thread is already authenticating. Because of the auth redirections, if left unchecked, could lead to serious issues.
-      if(sessionStorage.getItem("keycloak-auth-lock")=="true"){
-        console.log("An authentication is currently under progress... skipping the new request")
-        return;
-      }
-      sessionStorage.setItem("keycloak-auth-lock", "true");
-      //initiating the normal auth progress
+    private async keycloakAuth() : Promise<AuthResponse> {
       let promise = this.keycloakClient
           .init({
             onLoad: 'login-required',
@@ -273,16 +266,14 @@ export class CordraClient {
           });
       return new Promise(function(resolve, reject) {
         promise.then((result:any) => {
-          sessionStorage.setItem("keycloak-auth-lock", "false");
-          resolve(promise);
+          resolve(result);
         });
         promise.catch((e: any) => {
-          sessionStorage.setItem("keycloak-auth-lock", "false");
           reject(e);
         });
       });
-
     }
+
 
 
     /**
