@@ -135,10 +135,6 @@ export class CordraClient {
         this.baseUri = CordraClient.ensureSlash(baseUri);
         this.defaultOptions = options || {};
         this.authTokens = AuthUtil.retrieveAuthTokens(this.baseUri);
-        if(options!=null && options.keycloakConfig!=null ) {
-          sessionStorage.setItem("keycloak-auth-lock", "false");
-          this.keycloakClient = Keycloak(options.keycloakConfig);
-        }
     }
 
     /**
@@ -169,9 +165,8 @@ export class CordraClient {
     }
 
     public async buildAuthHeadersReturnDetails(options: Options = this.defaultOptions, acquireNewToken: boolean = true): Promise<{isStoredToken?: boolean, unauthenticated?: boolean, headers: Headers}> {
-        if(options.keycloakConfig){
-          return { headers: await AuthUtil.buildAuthHeadersFromOptions(undefined, this.keycloakClient.token) };
-        }
+
+        console.log("RUNNING buildAuthHeadersReturnDetails with params: ", options, acquireNewToken)
         if (!options) return { headers: new Headers() };
         if (options.token) return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
         const userKey = options.userId || options.username;
@@ -228,7 +223,11 @@ export class CordraClient {
      */
     public async authenticate(options: Options = this.defaultOptions): Promise<AuthResponse> {
 
-        if(options.keycloakConfig) {
+        console.log("OPTIONS ARE: ", options)
+        console.log("this.keycloakClient: ", this.keycloakClient)
+
+        if(options.keycloakConfig != null ) {
+          this.keycloakClient = Keycloak(options.keycloakConfig);
           return this.keycloakAuth();
         }
 
@@ -256,23 +255,114 @@ export class CordraClient {
     }
 
 
+/*
     private async keycloakAuth() : Promise<AuthResponse> {
+      return new Promise(function(resolve, reject) {
+
+        resolve(
+          {
+          access_token : "dummy_token",
+          token_type : "keycloakClient.tokenParsed.typ",
+          active : true,
+          userId : "keycloakClient.tokenParsed.sub",
+          username : "keycloakClient.preferred_username"
+        })
+      })
+
+    }
+    */
+
+
+    private async keycloakAuth() : Promise<AuthResponse> {
+
+      console.log("keycloakAuth(): ", this.keycloakClient)
+
+      const keycloakClient = this.keycloakClient;
+      const extractAuthResp = this.extractAuthResp;
+
       let promise = this.keycloakClient
           .init({
             onLoad: 'login-required',
             checkLoginIframe: false,
             //silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-            promiseType: 'native'
+            //promiseType: 'native'
           });
-      return new Promise(function(resolve, reject) {
-        promise.then((result:any) => {
-          resolve(result);
-        });
-        promise.catch((e: any) => {
+      return await new Promise(function(resolve, reject) {
+        promise.success((result:any) => {
+          let response = extractAuthResp(keycloakClient);
+          resolve(response);
+        })
+        .error((e: any) => {
+          console.log(e)
           reject(e);
         });
       });
+
+
     }
+
+
+
+
+
+
+
+    private async getKeycloakAuthStatus() : Promise<AuthResponse>{
+
+      console.log("getKeycloakAuthStatus: ", this.keycloakClient, this.defaultOptions)
+
+      if(this.keycloakClient == null){
+        if(this.defaultOptions.keycloakConfig != null){
+          return this.authenticate();
+        }
+        else{
+          return new Promise<any>(function(resolve, reject) {
+              reject();
+          });
+        }
+
+      }
+      else {
+        console.log("getKeycloakAuthStatus -- keycloakClient: ", this.keycloakClient)
+        const extractAuthResp = this.extractAuthResp;
+        const keycloakClient = this.keycloakClient;
+        return new Promise<any>(function(resolve, reject) {
+            let authResp = extractAuthResp(keycloakClient);
+            resolve(authResp);
+        });
+      }
+      
+
+    }
+
+
+    private extractAuthResp(keycloakClient : any) : AuthResponse {
+      let authResp : AuthResponse;
+
+      console.log("keycloakClient", keycloakClient)
+
+      if(keycloakClient != null){
+        authResp = {
+          access_token : keycloakClient.token,
+          token_type : keycloakClient.tokenParsed.typ,
+          active : true,
+          userId : keycloakClient.tokenParsed.sub,
+          username : keycloakClient.preferred_username
+        }
+      }
+      else{
+        authResp = {
+          access_token : undefined,
+          token_type : undefined,
+          active : false,
+          userId : undefined,
+          username : undefined
+        }
+      }
+
+      return authResp;
+    }
+
 
 
 
@@ -283,6 +373,14 @@ export class CordraClient {
      * @param options Options to use for this request
      */
     public async getAuthenticationStatus(full: boolean = false, options: Options = this.defaultOptions): Promise<AuthResponse> {
+
+
+        console.log("getAuthenticationStatus(): ", options)
+
+        if(options.keycloakConfig != null){
+          return this.getKeycloakAuthStatus();
+        }
+
         const userKey = options.userId || options.username;
         const headersObj = await this.buildAuthHeadersReturnDetails(options, false);
         let uri = this.baseUri + 'check-credentials';
