@@ -135,7 +135,13 @@ export class CordraClient {
         this.baseUri = CordraClient.ensureSlash(baseUri);
         this.defaultOptions = options || {};
         this.authTokens = AuthUtil.retrieveAuthTokens(this.baseUri);
+
+        if(this.defaultOptions != null && this.defaultOptions.keycloakConfig != null){
+          this.keycloakClient = Keycloak(this.defaultOptions.keycloakConfig);
+        }
+
     }
+
 
     /**
      * Builds a Headers object containing the authentication headers corresponding to the given options.
@@ -223,73 +229,67 @@ export class CordraClient {
      */
     public async authenticate(options: Options = this.defaultOptions): Promise<AuthResponse> {
 
-        console.log("OPTIONS ARE: ", options)
-        console.log("this.keycloakClient: ", this.keycloakClient)
+
 
         if(options.keycloakConfig != null ) {
-          this.keycloakClient = Keycloak(options.keycloakConfig);
-          return this.keycloakAuth();
+          if(this.keycloakClient == null){
+            this.keycloakClient = Keycloak(options.keycloakConfig);
+          }
+          const authResponse = await this.keycloakAuth();
+
+          console.log("Authentication token is : ", authResponse.access_token);
+
+          this.defaultOptions.token = authResponse.access_token;
+          return authResponse;
+        }
+        else {
+
+          const tokenRequest = await AuthUtil.createTokenRequest(options);
+          const uri = this.baseUri + 'auth/token';
+          const authResponse = await fetch(uri, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(tokenRequest)
+          })
+          .then(CordraClient.checkForErrors)
+          .then(CordraClient.returnJsonPromise);
+          if (!authResponse.active) {
+              throw { message : 'Authorization failed' };
+          }
+          const userKey = options.userId || options.username;
+          if (userKey) {
+              const token = authResponse.access_token;
+              this.authTokens[userKey] = { token, lastUsed: Date.now() };
+              AuthUtil.storeAuthTokens(this.baseUri, this.authTokens);
+          }
+          return authResponse;
+
         }
 
-        const tokenRequest = await AuthUtil.createTokenRequest(options);
-        const uri = this.baseUri + 'auth/token';
-        const authResponse = await fetch(uri, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(tokenRequest)
-        })
-        .then(CordraClient.checkForErrors)
-        .then(CordraClient.returnJsonPromise);
-        if (!authResponse.active) {
-            throw { message : 'Authorization failed' };
-        }
-        const userKey = options.userId || options.username;
-        if (userKey) {
-            const token = authResponse.access_token;
-            this.authTokens[userKey] = { token, lastUsed: Date.now() };
-            AuthUtil.storeAuthTokens(this.baseUri, this.authTokens);
-        }
-        return authResponse;
+
     }
 
 
-/*
-    private async keycloakAuth() : Promise<AuthResponse> {
-      return new Promise(function(resolve, reject) {
-
-        resolve(
-          {
-          access_token : "dummy_token",
-          token_type : "keycloakClient.tokenParsed.typ",
-          active : true,
-          userId : "keycloakClient.tokenParsed.sub",
-          username : "keycloakClient.preferred_username"
-        })
-      })
-
-    }
-    */
 
 
     private async keycloakAuth() : Promise<AuthResponse> {
 
-      console.log("keycloakAuth(): ", this.keycloakClient)
+      let keycloakClient = this.keycloakClient;
+      let extractAuthResp = this.extractAuthResp;
 
-      const keycloakClient = this.keycloakClient;
-      const extractAuthResp = this.extractAuthResp;
-
-      let promise = this.keycloakClient
+      let initPromise = this.keycloakClient
           .init({
             onLoad: 'login-required',
             checkLoginIframe: false,
-            //silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html',
-            //promiseType: 'native'
+            //silentCheckSsoRedirectUri: window.location.origin + '/silent-check-sso.html'
           });
-      return await new Promise(function(resolve, reject) {
-        promise.success((result:any) => {
+
+      return new Promise(function(resolve, reject) {
+        initPromise.success((result:any) => {
           let response = extractAuthResp(keycloakClient);
+          //keycloakClient.token
           resolve(response);
         })
         .error((e: any) => {
@@ -298,48 +298,31 @@ export class CordraClient {
         });
       });
 
-
     }
-
-
-
-
 
 
 
     private async getKeycloakAuthStatus() : Promise<AuthResponse>{
 
-      console.log("getKeycloakAuthStatus: ", this.keycloakClient, this.defaultOptions)
-
-      if(this.keycloakClient == null){
-        if(this.defaultOptions.keycloakConfig != null){
-          return this.authenticate();
+      const extractAuthResp = this.extractAuthResp;
+      const keycloakClient = this.keycloakClient;
+      return new Promise<any>(function(resolve, reject) {
+        try{
+          let authResp = extractAuthResp(keycloakClient);
+          resolve(authResp);
         }
-        else{
-          return new Promise<any>(function(resolve, reject) {
-              reject();
-          });
+        catch(e){
+          reject(e);
         }
 
-      }
-      else {
-        console.log("getKeycloakAuthStatus -- keycloakClient: ", this.keycloakClient)
-        const extractAuthResp = this.extractAuthResp;
-        const keycloakClient = this.keycloakClient;
-        return new Promise<any>(function(resolve, reject) {
-            let authResp = extractAuthResp(keycloakClient);
-            resolve(authResp);
-        });
-      }
-      
+      });
+
 
     }
 
 
     private extractAuthResp(keycloakClient : any) : AuthResponse {
       let authResp : AuthResponse;
-
-      console.log("keycloakClient", keycloakClient)
 
       if(keycloakClient != null){
         authResp = {
@@ -360,6 +343,7 @@ export class CordraClient {
         }
       }
 
+
       return authResp;
     }
 
@@ -374,10 +358,9 @@ export class CordraClient {
      */
     public async getAuthenticationStatus(full: boolean = false, options: Options = this.defaultOptions): Promise<AuthResponse> {
 
-
         console.log("getAuthenticationStatus(): ", options)
 
-        if(options.keycloakConfig != null){
+        if(this.keycloakClient != null){
           return this.getKeycloakAuthStatus();
         }
 
@@ -402,6 +385,7 @@ export class CordraClient {
         })
         .then(CordraClient.checkForErrors)
         .then(CordraClient.returnJsonPromise);
+
     }
 
     /**
