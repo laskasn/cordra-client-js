@@ -172,7 +172,12 @@ export class CordraClient {
 
     public async buildAuthHeadersReturnDetails(options: Options = this.defaultOptions, acquireNewToken: boolean = true): Promise<{isStoredToken?: boolean, unauthenticated?: boolean, headers: Headers}> {
         if (!options) return { headers: new Headers() };
-        if (options.token) return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
+        if (options.token) {
+          if(options.keycloakConfig)
+            return { isStoredToken: true, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
+          else
+            return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
+        }
         const userKey = options.userId || options.username;
         if (!userKey) return { headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
         const token = this.getCachedToken(userKey);
