@@ -10,7 +10,6 @@ import { Base64 } from "../encoder/Base64.js";
 
 export class AuthUtil {
     public static async buildAuthHeadersFromOptions(options?: Options, token?: string): Promise<Headers> {
-      
         let headers = new Headers();
         if (token) {
             headers = this.addBearerTokenHeader(headers, token);
@@ -76,6 +75,7 @@ export class AuthUtil {
         if (res) return JSON.parse(res);
         else return {};
     }
+    
     public static storeAuthTokens(key: string, authTokens: AuthTokens): void {
         localStorage.setItem('CordraClient.authTokens-' + key, JSON.stringify(authTokens));
     }

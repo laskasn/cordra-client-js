@@ -171,8 +171,6 @@ export class CordraClient {
     }
 
     public async buildAuthHeadersReturnDetails(options: Options = this.defaultOptions, acquireNewToken: boolean = true): Promise<{isStoredToken?: boolean, unauthenticated?: boolean, headers: Headers}> {
-
-        //console.log("RUNNING buildAuthHeadersReturnDetails with params: ", options, acquireNewToken)
         if (!options) return { headers: new Headers() };
         if (options.token) return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
         const userKey = options.userId || options.username;
@@ -207,8 +205,6 @@ export class CordraClient {
             return fetcher(secondAuthHeaders);
         }
     }
-
-
 
     /**
      * Authenticates using the given options.
@@ -341,9 +337,6 @@ export class CordraClient {
       return authResp;
     }
 
-
-
-
     /**
      * Gets the authentication status for the supplied options. By default, returns active flag, userId, and username.
      *
@@ -377,7 +370,6 @@ export class CordraClient {
         })
         .then(CordraClient.checkForErrors)
         .then(CordraClient.returnJsonPromise);
-
     }
 
     /**

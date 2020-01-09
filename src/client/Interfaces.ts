@@ -1,4 +1,3 @@
-
 /**
  * Access Control on an Object.
  *
@@ -91,7 +90,7 @@ export interface Options {
     privateKey?: JsonWebKey;
     /** Bearer token to use for authentication */
     token?: string | null;
-
+    
     /** Cordra ID of user to perform operation as */
     asUserId?: string;
     /** Suffix to add to generated ID on object creation */
@@ -110,7 +109,6 @@ export interface KeycloakConfig {
   realm?: string;
   clientId?: string;
 }
-
 
 export interface Payload {
     name: string;
