@@ -172,7 +172,7 @@ export class CordraClient {
 
     public async buildAuthHeadersReturnDetails(options: Options = this.defaultOptions, acquireNewToken: boolean = true): Promise<{isStoredToken?: boolean, unauthenticated?: boolean, headers: Headers}> {
 
-        console.log("RUNNING buildAuthHeadersReturnDetails with params: ", options, acquireNewToken)
+        //console.log("RUNNING buildAuthHeadersReturnDetails with params: ", options, acquireNewToken)
         if (!options) return { headers: new Headers() };
         if (options.token) return { isStoredToken: false, headers: await AuthUtil.buildAuthHeadersFromOptions(options) };
         const userKey = options.userId || options.username;
@@ -229,21 +229,15 @@ export class CordraClient {
      */
     public async authenticate(options: Options = this.defaultOptions): Promise<AuthResponse> {
 
-
-
         if(options.keycloakConfig != null ) {
           if(this.keycloakClient == null){
             this.keycloakClient = Keycloak(options.keycloakConfig);
           }
           const authResponse = await this.keycloakAuth();
-
-          console.log("Authentication token is : ", authResponse.access_token);
-
           this.defaultOptions.token = authResponse.access_token;
           return authResponse;
         }
         else {
-
           const tokenRequest = await AuthUtil.createTokenRequest(options);
           const uri = this.baseUri + 'auth/token';
           const authResponse = await fetch(uri, {
@@ -330,7 +324,7 @@ export class CordraClient {
           token_type : keycloakClient.tokenParsed.typ,
           active : true,
           userId : keycloakClient.tokenParsed.sub,
-          username : keycloakClient.preferred_username
+          username : keycloakClient.tokenParsed.preferred_username
         }
       }
       else{
@@ -358,9 +352,7 @@ export class CordraClient {
      */
     public async getAuthenticationStatus(full: boolean = false, options: Options = this.defaultOptions): Promise<AuthResponse> {
 
-        console.log("getAuthenticationStatus(): ", options)
-
-        if(this.keycloakClient != null){
+        if(options.keycloakConfig != null){
           return this.getKeycloakAuthStatus();
         }
 
@@ -438,6 +430,11 @@ export class CordraClient {
      * @param options Options to use for this request
      */
     public async signOut(options: Options = this.defaultOptions): Promise<AuthResponse> {
+
+        if(options.token != null){
+          this.keycloakClient.init({}).success((result:any) => {this.keycloakClient.logout({redirectUri: window.location.href}) })
+        }
+
         const userKey = options.userId || options.username;
         if (!userKey) {
             return { active: false };
