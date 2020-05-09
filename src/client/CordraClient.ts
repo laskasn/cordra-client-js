@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2019 Corporation for National Research Initiatives;
- * All rights reserved.
- */
-
 import {
     AccessControlList,
     AuthResponse,
@@ -424,10 +419,11 @@ export class CordraClient {
     }
 
     /**
-     * Retrieves an object form Cordra by ID.
+     * Retrieves an object from Cordra by ID, throwing if not found.
      *
      * @param id The ID of the object to retrieve
      * @param options Options to use for this request
+     * @return the object; throws if not found
      */
     public async get(id: string, options: Options = this.defaultOptions): Promise<CordraObject> {
         let uri = this.baseUri + 'objects/' + CordraClient.getEncodedWithSlashes(id) + '?full';
@@ -439,6 +435,27 @@ export class CordraClient {
             })
             .then(CordraClient.checkForErrors)
             .then(CordraClient.returnJsonPromise);
+        });
+    }
+
+   /**
+     * Retrieves an object from Cordra by ID, returning null if not found.
+     *
+     * @param id The ID of the object to retrieve
+     * @param options Options to use for this request
+     * @return the object; null if not found
+     */
+    public async getOrNull(id: string, options: Options = this.defaultOptions): Promise<CordraObject | null> {
+        let uri = this.baseUri + 'objects/' + CordraClient.getEncodedWithSlashes(id) + '?full';
+        if (options.includeResponseContext) uri += '&includeResponseContext';
+        return await this.retryAfterTokenFailure<CordraObject | null>(options, async headers => {
+            const response = await fetch(uri, {
+                method: 'GET',
+                headers
+            });
+            if (response.status === 404) return null;
+            await CordraClient.checkForErrors(response);
+            return response.json() as Promise<CordraObject>;
         });
     }
 
@@ -784,17 +801,17 @@ export class CordraClient {
      *
      * @param objectId The id of the object on which to call an instance method. Either objectId or type is required.
      * @param method The name of the method to call.
-     * @param jsonBody A json object representing the parameters to pass to the method.
+     * @param params The parameters to pass to the method as JSON-representable data.
      * @param options Options to use for this request
      */
-    public async callMethod(objectId: string, method: string, jsonBody: object, options: Options = this.defaultOptions): Promise<any> {
+    public async callMethod(objectId: string, method: string, params: any, options: Options = this.defaultOptions): Promise<any> {
         let uri = this.baseUri + 'call?objectId=' + CordraClient.getEncodedWithSlashes(objectId);
         uri += '&method=' + CordraClient.getEncodedWithSlashes(method);
         return await this.retryAfterTokenFailure(options, headers => {
             return fetch(uri, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(jsonBody)
+                body: JSON.stringify(params)
             })
             .then(CordraClient.checkForErrors)
             .then(CordraClient.returnJsonOrUndefinedPromise);
@@ -805,18 +822,18 @@ export class CordraClient {
      * Calls a method for a given type.
      *
      * @param method The name of the method to call.
-     * @param jsonBody A json object representing the parameters to pass to the method.
+     * @param params The parameters to pass to the method as JSON-representable data.
      * @param type The id of the object on which to call an instance method. Either objectId or type is required.
      * @param options Options to use for this request
      */
-    public async callMethodForType(type: string, method: string, jsonBody: object, options: Options = this.defaultOptions): Promise<any> {
+    public async callMethodForType(type: string, method: string, params: any, options: Options = this.defaultOptions): Promise<any> {
         let uri = this.baseUri + 'call?type=' + CordraClient.getEncodedWithSlashes(type);
         uri += '&method=' + CordraClient.getEncodedWithSlashes(method);
         return await this.retryAfterTokenFailure(options, headers => {
             return fetch(uri, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify(jsonBody)
+                body: JSON.stringify(params)
             })
             .then(CordraClient.checkForErrors)
             .then(CordraClient.returnJsonOrUndefinedPromise);

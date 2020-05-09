@@ -167,6 +167,9 @@ two digits of the version of Cordra server software the client works with. The l
 increment independently from Cordra server versions. So, for example, Cordra client versions
 `2.0.2` or `2.0.3` will work with Cordra server version `2.0.0`.
 
+Versions `2.0.0` and `2.1.0` are compatible: you can use cordra-client `2.1.0` with
+Cordra server `2.0.0` and vice versa.
+
 ## License
 
 See the [LICENSE.txt](LICENSE.TXT) file for details.

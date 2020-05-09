@@ -1,9 +1,9 @@
-const uglify = require('rollup-plugin-uglify');
-const babel = require("rollup-plugin-babel");
-const nodeResolve = require("rollup-plugin-node-resolve");
-const commonjs = require("rollup-plugin-commonjs");
+const terser = require('rollup-plugin-terser');
+const babel = require('@rollup/plugin-babel');
+const nodeResolve = require('@rollup/plugin-node-resolve');
+const commonjs = require('@rollup/plugin-commonjs');
 const pkg = require('./package.json');
-const rollup = require("rollup");
+const rollup = require('rollup');
 
 // This allows our ts files to use js in import statements (the better to build to browser ES2017)
 // An alternative to consider: use extension-less import statements, and add the extension when building to browser ES2017
@@ -30,9 +30,10 @@ function versionedMinFilename() {
 const inputOptions = {
     input: "./src/index.ts",
     plugins: [
-        babel({
+        babel.babel({
             exclude: ["dist/**", "node_modules/**"],
             extensions: [".ts", "tsx"],
+            babelHelpers: 'bundled'
         }),
         nodeResolve({
             browser: true,
@@ -62,7 +63,7 @@ async function build() {
     await bundle.write(mainOptions);
     await bundle.write(moduleOptions);
     await bundle.write(versionedOptions);
-    inputOptions.plugins.push(uglify.uglify({}));
+    inputOptions.plugins.push(terser.terser());
     const minBundle = await rollup.rollup(inputOptions);
     await minBundle.write(minOptions);
     await minBundle.write(versionedMinOptions);

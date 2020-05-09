@@ -6,6 +6,14 @@ group = 'net.cnri.cordra'
 archivesBaseName = scopedNameRemoveScope(packageJson.name) + '-js'
 version = packageJson.version
 
+ext.pomName = 'Cordra Client – JavaScript Version'
+description = "CNRI's Cordra JavaScript library artifact useful for Maven and Gradle build process."
+ext.pomUrl = 'https://www.cordra.org'
+ext.pomScmUrl = 'https://gitlab.com/cnri/cordra/cordra-client-js'
+ext.pomLicenseName = 'CNRI License Agreement for Cordra Client Library – JavaScript Version'
+ext.pomLicenseUrl = 'https://hdl.handle.net/20.1000/122'
+ext.pomDeveloperEmail = 'support@cordra.org'
+
 clean.doFirst {
     exec {
         commandLine 'npm', 'run', 'clean'
@@ -68,10 +76,39 @@ npmBuildDocsThemed.mustRunAfter clean
 
 task typedocThemed(type: Zip) {
     dependsOn clean, npmBuildDocsThemed
-    classifier 'typedoc-themed'
+    baseName "${archivesBaseName}-typedoc-themed"
     from 'dist/docs-themed'
-    into "${archivesBaseName}-${version}-${classifier}"
-    artifacts {
-        archives typedocThemed
+    into "${baseName}-${version}"
+    if (project.hasProperty('mavenCentral')) {
+        doLast {
+            // prevent uploadArchives from uploading this
+            configurations.archives.artifacts.removeAll { it.file == archivePath }
+        }
+    } else {
+        artifacts {
+            archives typedocThemed
+        }
+    }
+}
+
+uploadArchives {
+    repositories.mavenDeployer {
+        if (!project.hasProperty('mavenCentral')) {
+            def name = "${archivesBaseName}-typedoc-themed"
+            addFilter(name) {artifact, file ->
+                artifact.name == name
+            }
+            pom(name).whenConfigured { pom ->
+                project.ext.configurePom(pom)
+            }
+        }
+        if (!project.hasProperty('onlyTypedocThemed')) {
+            addFilter(archivesBaseName) {artifact, file ->
+                artifact.name == archivesBaseName
+            }
+            pom(archivesBaseName).whenConfigured { pom ->
+                project.ext.configurePom(pom)
+            }
+        }
     }
 }

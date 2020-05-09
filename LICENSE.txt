@@ -1,11 +1,11 @@
 A) CNRI License Agreement for Cordra® Client Library – JavaScript Version
 =========================================================================
 
-© Corporation for National Research Initiatives 2019
+© Corporation for National Research Initiatives 2020
 
 1. This CNRI License Agreement for Cordra® Client Library--JavaScript Version
 ("License Agreement") is between Corporation for National Research Initiatives
-("CNRI"), having an office at 1895 Preston White Drive, Reston, VA 20191- 5434,
+("CNRI"), having an office at 1895 Preston White Drive, Reston, VA 20191-5434,
 and the Individual or Organization ("Licensee") that has installed or otherwise
 used the Cordra® Client Library – JavaScript Version ("Software"). Licensee
 shall be deemed to have entered into, signed and agreed to be bound by the terms
@@ -48,7 +48,7 @@ B) Third-party licenses
 
 (1) core-js
 
-Copyright (c) 2014-2019 Denis Pushkarev
+Copyright (c) 2014-2020 Denis Pushkarev
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,11 +1,13 @@
 apply plugin: 'maven'
 
 plugins.withId('java') {
-    //// reload all snapshots
-    //configurations.all { resolutionStrategy { cacheChangingModulesFor 0, 'seconds' } }
+    if (project.hasProperty('refreshSnapshots')) {
+        configurations.all { resolutionStrategy { cacheChangingModulesFor 0, 'seconds' } }
+    }
 
-    //// see Java warnings
-    //compileJava { options.compilerArgs += [ '-Xlint:unchecked', '-Xlint:deprecation' ] }
+    if (project.hasProperty('seeJavaWarnings')) {
+        compileJava { options.compilerArgs += [ '-Xlint:unchecked', '-Xlint:deprecation' ] }
+    }
 
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
@@ -43,7 +45,18 @@ def mavenUser = project.ext.properties.mavenUser
 def mavenPassword = project.ext.properties.mavenPassword
 
 repositories {
-    if (repoBaseUri) {
+    if (project.hasProperty('mavenCentralStaging')) {
+       project.ext.properties.mavenCentralStaging.split(',').each { stagingUrl ->
+           maven {
+               url stagingUrl
+               credentials {
+                   username ossrhUsername
+                   password ossrhPassword
+               }
+           }
+       }
+       jcenter()
+    } else if (repoBaseUri) {
         maven {
             url repoBaseUri + 'releases'
             credentials {
@@ -79,13 +92,13 @@ repositories {
 configurations.all {
     resolutionStrategy.eachDependency { details ->
         if (details.requested.group == 'commons-logging' && details.requested.name == 'commons-logging') {
-            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.28'
+            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.30'
         } else if (details.requested.group == 'commons-logging' && details.requested.name == 'commons-logging-api') {
-            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.28'
+            details.useTarget group: 'org.slf4j', name: 'jcl-over-slf4j', version: '1.7.30'
         } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
-            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.28'
+            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.30'
         } else if (details.requested.group == 'org.slf4j' && details.requested.name == 'slf4j-log4j12') {
-            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.28'
+            details.useTarget group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.30'
         }
     }
 }
@@ -145,13 +158,104 @@ plugins.withId('java') {
     }
 }
 
-uploadArchives {
-    repositories.mavenDeployer {
-        repository(url: repoBaseUri + "releases") {
-            authentication(userName: mavenUser, password: mavenPassword)
+project.ext.configurePom = { pom ->
+    // packaging needs to be set late
+    if (project.ext.properties.pomPackaging) {
+        pom.whenConfigured { packaging = project.ext.pomPackaging }
+    }
+    pom.project {
+        if (!pom.model.name) {
+            def pomName = project.ext.properties.pomName
+            if (!pomName) pomName = (project.group + ':' + project.archivesBaseName)
+            name pomName
         }
-        snapshotRepository(url: repoBaseUri + "snapshots") {
-            authentication(userName: mavenUser, password: mavenPassword)
+        if (!pom.model.description) {
+            def pomDescription = project.ext.properties.pomDescription
+            if (!pomDescription) pomDescription = project.description
+            if (pomDescription) {
+                description pomDescription
+            }
+        }
+        if (!pom.model.url && project.ext.properties.pomUrl) {
+            url project.ext.properties.pomUrl
+        }
+        if (!pom.model.scm) {
+            def pomScmUrl = project.ext.properties.pomScmUrl
+            if (!pomScmUrl) pomScmUrl = project.ext.properties.pomUrl
+            if (pomScmUrl) {
+                scm {
+                    url pomScmUrl
+                }
+            }
+        }
+        if (!pom.model.licenses && (project.ext.properties.pomLicenseName || project.ext.properties.pomLicenseUrl)) {
+            licenses {
+                license {
+                    if (project.ext.properties.pomLicenseName) {
+                        name project.ext.properties.pomLicenseName
+                    }
+                    if (project.ext.properties.pomLicenseUrl) {
+                        url project.ext.properties.pomLicenseUrl
+                    }
+                }
+            }
+        }
+        if (!pom.model.developers && project.ext.properties.pomDeveloperEmail) {
+            developers {
+                developer {
+                    name 'CNRI'
+                    email project.ext.properties.pomDeveloperEmail
+                    organization = 'CNRI' // = required here
+                    organizationUrl 'https://www.cnri.reston.va.us'
+                }
+            }
+        }
+    }
+}
+
+if (!project.hasProperty('mavenCentral')) {
+    uploadArchives {
+        repositories.mavenDeployer {
+            repository(url: repoBaseUri + "releases") {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+            snapshotRepository(url: repoBaseUri + "snapshots") {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+            afterEvaluate {
+                project.ext.configurePom(pom)
+            }
+        }
+    }
+} else {
+    apply plugin: 'signing'
+
+    signing {
+        sign configurations.archives
+    }
+
+    project.tasks.withType(Sign) {
+        signatures.all {
+            if (it.file.name.endsWith('.tar.gz.asc')) {
+                // Workaround for apparent Gradle bug around signing files where extension has a dot
+                it.type = 'tar.gz.asc'
+            }
+        }
+    }
+
+    uploadArchives {
+        repositories.mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+            afterEvaluate {
+                project.ext.configurePom(pom)
+            }
         }
     }
 }

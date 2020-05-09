@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2019 Corporation for National Research Initiatives;
- * All rights reserved.
- */
-
 import { AuthTokens, Options, TokenRequest } from "./Interfaces.js";
 import { EncryptionUtil } from "./EncryptionUtil.js";
 import { Utf8 } from "../encoder/Utf8.js";
