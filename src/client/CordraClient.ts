@@ -138,6 +138,8 @@ export class CordraClient {
 
         if(this.defaultOptions != null && this.defaultOptions.keycloakConfig != null){
           this.keycloakClient = Keycloak(this.defaultOptions.keycloakConfig);
+          //this.keycloakClient.hasRefreshSet = false;
+
         }
 
     }
@@ -194,22 +196,104 @@ export class CordraClient {
         }
     }
 
+
+    public setTokenRefresh(secs : number){
+
+      console.log("Running setTokenRefresh")
+
+      //if(this.keycloakClient.hasRefreshSet == true)
+      //  return;
+
+      //this.keycloakClient.hasRefreshSet = true;
+
+      let keycloakClient = this.keycloakClient;
+      let extractAuthResp = this.extractAuthResp;
+      let defaultOptions = this.defaultOptions;
+
+      setInterval(function(){
+        console.log("Running updateToken()")
+        keycloakClient.updateToken(5)
+          .success( (updated: boolean) => {
+            if(!updated) return;
+            console.log("Updated : ", updated)
+            let authResponse = extractAuthResp(keycloakClient);
+            defaultOptions.token = authResponse.access_token;
+            console.log("new token: ", authResponse.access_token);
+          })
+          .error( (e: any) => console.log(e));
+      }, secs * 1000);
+
+    }
+
+
+
+
     public async retryAfterTokenFailure<T>(options: Options, fetcher: (headers: Headers) => Promise<T>) : Promise<T> {
         const firstAuthHeadersObj = await this.buildAuthHeadersReturnDetails(options);
         if (firstAuthHeadersObj.unauthenticated) throw { message: "Unauthenticated" };
         if (!firstAuthHeadersObj.isStoredToken) return fetcher(firstAuthHeadersObj.headers);
         try {
+          debugger;
             // necessary to await here in order for try/catch to work
             return await fetcher(firstAuthHeadersObj.headers);
         } catch (e) {
             if (e.status !== 401) throw e;
-            const userKey = options.userId || options.username;
-            if (!userKey) throw e;
-            delete this.authTokens[userKey];
-            const secondAuthHeaders = await this.buildAuthHeaders(options);
-            return fetcher(secondAuthHeaders);
+            debugger;
+
+            console.log("Status of the call was: ", e.status, "... Retrying!!!");
+
+
+            if(options.keycloakConfig && options.token){
+              debugger;
+/*
+              const authResponse = await this.keycloakRefreshToken(30);
+              this.defaultOptions.token = authResponse.access_token;
+              options.token = this.defaultOptions.token;
+
+              const secondAuthHeaders = await this.buildAuthHeadersReturnDetails(options);
+              return fetcher(secondAuthHeaders.headers);
+*/
+
+
+
+              return fetcher(firstAuthHeadersObj.headers);
+
+
+            }
+            else{
+              const userKey = options.userId || options.username;
+              if (!userKey) throw e;
+              delete this.authTokens[userKey];
+              const secondAuthHeaders = await this.buildAuthHeaders(options);
+              return fetcher(secondAuthHeaders);
+            }
+
         }
     }
+
+/*
+    private refreshToken(){
+      console.log("REFRESHING TOKEN...");
+      let kcclient = this.keycloakClient;
+
+      this.keycloakClient.updateToken(30)
+      .success((result : any) => {
+        debugger;
+        console.log(result);
+        console.log(kcclient, kcclient.token, kcclient.access_token);
+
+        //options.token = kcclient.access_token;
+        //console.log("REFRESHED TOKEN: ", options.token)
+        //const secondAuthHeaders = await this.buildAuthHeadersReturnDetails(options);
+        //return fetcher(secondAuthHeaders.headers);
+
+      })
+      .error((e: any) => {
+        console.log('Failed to refresh keycloak token');
+        console.log(e)
+      });
+    }
+*/
 
     /**
      * Authenticates using the given options.
@@ -236,6 +320,7 @@ export class CordraClient {
           }
           const authResponse = await this.keycloakAuth();
           this.defaultOptions.token = authResponse.access_token;
+          //this.setTokenRefresh(1);
           return authResponse;
         }
         else {
@@ -285,11 +370,14 @@ export class CordraClient {
         initPromise.success((result:any) => {
           let response = extractAuthResp(keycloakClient);
           //keycloakClient.token
+          console.log("initial token is : ", keycloakClient.token);
+          console.log("keycloakClient is : ", keycloakClient);
           resolve(response);
         })
         .error((e: any) => {
           console.log(e)
-          reject(e);
+          console.log("erroneous keycloak login.", e)
+          reject(new Error(e));
         });
       });
 
@@ -307,7 +395,7 @@ export class CordraClient {
           resolve(authResp);
         }
         catch(e){
-          reject(e);
+          reject(new Error(e));
         }
 
       });
@@ -341,6 +429,41 @@ export class CordraClient {
 
       return authResp;
     }
+
+
+/*
+    private async keycloakRefreshToken(seconds : number) : Promise<AuthResponse> {
+
+      let keycloakClient = this.keycloakClient;
+      let extractAuthResp = this.extractAuthResp;
+
+      console.log("BEFORE: ", this.keycloakClient.token);
+
+      let updatePromise = this.keycloakClient.updateToken(seconds);
+
+
+      return new Promise(function(resolve, reject) {
+        updatePromise.success((result : any) => {
+
+          console.log("Refresh result: ", result);
+          let response = extractAuthResp(keycloakClient);
+          console.log("AFTER: ", keycloakClient.token);
+          resolve(response);
+          //this.defaultOptions.token = result.access_token;
+
+        })
+        .error((e: any) => {
+          console.log('Failed to refresh keycloak token');
+          console.log(e)
+          reject(new Error(e));
+        });
+      });
+
+
+    }
+
+*/
+
 
     /**
      * Gets the authentication status for the supplied options. By default, returns active flag, userId, and username.
