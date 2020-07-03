@@ -195,33 +195,6 @@ export class CordraClient {
     }
 
 
-    public setTokenRefresh(secs : number){
-
-      console.log("Running setTokenRefresh")
-
-
-      let keycloakClient = this.keycloakClient;
-      let extractAuthResp = this.extractAuthResp;
-      let defaultOptions = this.defaultOptions;
-
-      setInterval(function(){
-        console.log("Running updateToken()")
-        keycloakClient.updateToken(5)
-          .success( (updated: boolean) => {
-            if(!updated) return;
-            console.log("Updated : ", updated)
-            let authResponse = extractAuthResp(keycloakClient);
-            defaultOptions.token = authResponse.access_token;
-            console.log("new token: ", authResponse.access_token);
-          })
-          .error( (e: any) => console.log(e));
-      }, secs * 1000);
-
-    }
-
-
-
-
     public async retryAfterTokenFailure<T>(options: Options, fetcher: (headers: Headers) => Promise<T>) : Promise<T> {
         const firstAuthHeadersObj = await this.buildAuthHeadersReturnDetails(options);
         if (firstAuthHeadersObj.unauthenticated) throw { message: "Unauthenticated" };
@@ -281,7 +254,6 @@ export class CordraClient {
           }
           const authResponse = await this.keycloakAuth();
           this.defaultOptions.token = authResponse.access_token;
-          //this.setTokenRefresh(1);
           return authResponse;
         }
         else {
@@ -331,8 +303,6 @@ export class CordraClient {
         initPromise.success((result:any) => {
           let response = extractAuthResp(keycloakClient);
           //keycloakClient.token
-          console.log("initial token is : ", keycloakClient.token);
-          console.log("keycloakClient is : ", keycloakClient);
           resolve(response);
         })
         .error((e: any) => {
@@ -398,24 +368,16 @@ export class CordraClient {
       let keycloakClient = this.keycloakClient;
       let extractAuthResp = this.extractAuthResp;
 
-      console.log("BEFORE: ", this.keycloakClient.token);
-
       let updatePromise = this.keycloakClient.updateToken(seconds);
 
 
       return new Promise(function(resolve, reject) {
         updatePromise.success((result : any) => {
-
-          console.log("Refresh result: ", result);
           let response = extractAuthResp(keycloakClient);
-          console.log("AFTER: ", keycloakClient.token);
           resolve(response);
-          //this.defaultOptions.token = result.access_token;
-
         })
         .error((e: any) => {
           console.log('Failed to refresh keycloak token');
-          console.log(e)
           reject(new Error(e));
         });
       });
